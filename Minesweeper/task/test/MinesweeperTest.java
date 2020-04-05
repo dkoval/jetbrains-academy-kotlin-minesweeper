@@ -4,7 +4,9 @@ import org.hyperskill.hstest.v6.stage.BaseStageTest;
 import org.hyperskill.hstest.v6.testcase.CheckResult;
 import org.hyperskill.hstest.v6.testcase.TestCase;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Collectors;
 
 public class MinesweeperTest extends BaseStageTest<Integer> {
@@ -60,9 +62,9 @@ public class MinesweeperTest extends BaseStageTest<Integer> {
             }
 
             for (char c : line.toCharArray()) {
-                if (c != 'X' && c != '.') {
+                if (c != 'X' && c != '.' && !(c >= '0' && c <= '9')) {
                     return CheckResult.FALSE(
-                        "One of the characters is not equal to either 'X' or '.'.\n" +
+                        "One of the characters is not equal to 'X' or '.' or to a number.\n" +
                             "In this line: \"" + line + "\"."
                     );
                 }
@@ -76,6 +78,55 @@ public class MinesweeperTest extends BaseStageTest<Integer> {
             return CheckResult.FALSE(
                 "Expected to see " + attach + " mines, found " + mines
             );
+        }
+
+        int[] around = new int[] {-1, 0, 1};
+
+        for (int y = 0; y < lines.size(); y++) {
+            String line = lines.get(y);
+            for (int x = 0; x < line.length(); x++) {
+                char c = line.charAt(x);
+
+                if (c == 'X') {
+                    continue;
+                }
+
+                int minesAround = 0;
+
+                for (int dx : around) {
+                    for (int dy : around) {
+
+                        int newX = x + dx;
+                        int newY = y + dy;
+
+                        if (0 <= newX && newX < 9 &&
+                            0 <= newY && newY < 9) {
+
+                            char newC = lines.get(newY).charAt(newX);
+
+                            if (newC == 'X') {
+                                minesAround++;
+                            }
+                        }
+                    }
+                }
+
+                if (minesAround == 0 && c != '.') {
+                    return CheckResult.FALSE(
+                        "There are no mines around, but found number " + c + ".\n" +
+                            "In line " + (y+1) + ", symbol " + (x+1) + "."
+                    );
+                }
+
+                if (minesAround != 0 && c != '0' + minesAround) {
+                    return CheckResult.FALSE(
+                        "In this cell should be number " + minesAround + ", " +
+                            "but found symbol \"" + c + "\".\n" +
+                            "In line " + (y+1) + ", symbol " + (x+1) + "."
+                    );
+                }
+
+            }
         }
 
         return CheckResult.TRUE;
