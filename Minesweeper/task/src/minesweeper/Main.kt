@@ -19,10 +19,7 @@ fun main() {
                     println("There is a number here!")
                 }
             } while (!ok)
-            val done = minesweeper.done()
-            if (done) {
-                println("Congratulations! You found all mines!")
-            }
-        } while (!done)
+        } while (!minesweeper.done())
+        println("Congratulations! You found all mines!")
     }
 }

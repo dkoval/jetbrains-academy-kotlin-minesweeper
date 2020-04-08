@@ -659,9 +659,6 @@ files:
 - name: src/minesweeper/Arrays2D.kt
   visible: true
   learner_created: true
-- name: src/minesweeper/InteractiveGameLoop.kt
-  visible: true
-  learner_created: true
 feedback_link: https://hyperskill.org/projects/8/stages/49/implement
 status: Solved
 record: -1
