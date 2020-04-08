@@ -3,38 +3,79 @@ package minesweeper
 import kotlin.random.Random
 
 class Minesweeper(private val numMines: Int = 10) {
-    private val numRows: Int = DEFAULT_NUM_ROWS
-    private val numCols: Int = DEFAULT_NUM_COLS
-    private var field: Array<CharArray> = generateRandomField(numRows, numCols)
+    private val numRows: Int = NUM_ROWS
+    private val numCols: Int = NUM_COLS
+    private var field: Array<Array<Cell>> = generateRandomField(numRows, numCols)
 
     init {
         analyseField()
     }
 
     companion object {
-        const val DEFAULT_NUM_ROWS = 9
-        const val DEFAULT_NUM_COLS = 9
-        const val EMPTY_CELL_MARKER = '.'
-        const val MINED_CELL_MARKER = 'X'
-
-        private fun initField(numRows: Int, numCols: Int, init: (i: Int, j: Int) -> Char): Array<CharArray> =
-                Array(numRows) { i ->
-                    CharArray(numCols) { j ->
-                        init(i, j)
-                    }
-                }
+        const val NUM_ROWS = 9
+        const val NUM_COLS = 9
     }
 
-    private fun generateRandomField(numRows: Int, numCols: Int): Array<CharArray> {
-        val fieldToReturn = initField(numRows, numCols) { _, _ -> EMPTY_CELL_MARKER }
+    private sealed class Cell {
+        class Empty(override var marked: Boolean = false) : Cell(), Markable
+        class Mined(override var marked: Boolean = false) : Cell(), Markable
+        class WithMinesAround(val numMines: Int) : Cell()
+
+        interface Markable {
+            var marked: Boolean
+        }
+
+        companion object {
+            const val EMPTY_CELL_SYMBOL = '.'
+            const val MARKED_CELL_SYMBOL = '*'
+        }
+    }
+
+    fun displayField() {
+        println(" │123456789│\n" +
+                "—│—————————│")
+        field.forEachIndexed { i, row ->
+            print("${i + 1}│")
+            row.forEach { cell ->
+                val marker = when {
+                    cell is Cell.WithMinesAround -> '0' + cell.numMines
+                    cell is Cell.Markable && cell.marked -> Cell.MARKED_CELL_SYMBOL
+                    else -> Cell.EMPTY_CELL_SYMBOL
+                }
+                print(marker)
+            }
+            println("│")
+        }
+        println("—│—————————│")
+    }
+
+    fun markCell(row: Int, col: Int): Boolean {
+        val cellToMark = field[row][col]
+        return if (cellToMark !is Cell.Markable) {
+            false
+        } else {
+            cellToMark.marked = !cellToMark.marked
+            true
+        }
+    }
+
+    fun done(): Boolean {
+        val matches = field.fold(0) { matchesSoFar, row ->
+            matchesSoFar + row.count { cell -> cell is Cell.Mined && cell.marked }
+        }
+        return matches == numMines
+    }
+
+    private fun generateRandomField(numRows: Int, numCols: Int): Array<Array<Cell>> {
+        val fieldToReturn = init2DArray<Cell>(numRows, numCols) { _, _ -> Cell.Empty() }
         var numMinesSoFar = 0
         // randomly put `numMines` to the field
         while (numMinesSoFar < numMines) {
             val randomNum = Random.nextInt(0, numRows * numCols)
             val row = randomNum / numRows
             val col = randomNum % numCols
-            if (fieldToReturn[row][col] == EMPTY_CELL_MARKER) {
-                fieldToReturn[row][col] = MINED_CELL_MARKER
+            if (fieldToReturn[row][col] is Cell.Empty) {
+                fieldToReturn[row][col] = Cell.Mined()
                 numMinesSoFar++
             }
         }
@@ -44,10 +85,10 @@ class Minesweeper(private val numMines: Int = 10) {
     private fun analyseField() {
         field.forEachIndexed { i, row ->
             row.forEachIndexed { j, cell ->
-                if (cell == EMPTY_CELL_MARKER) {
+                if (cell is Cell.Empty) {
                     val numMinesAround = numMinesAround(i, j)
                     if (numMinesAround in 1..8) {
-                        field[i][j] = '0' + numMinesAround
+                        field[i][j] = Cell.WithMinesAround(numMinesAround)
                     }
                 }
             }
@@ -134,12 +175,5 @@ class Minesweeper(private val numMines: Int = 10) {
 
     private fun countMines(vararg cells: Pair<Int, Int>): Int = cells.count { (row, col) -> isMine(row, col) }
 
-    private fun isMine(row: Int, col: Int): Boolean = field[row][col] == MINED_CELL_MARKER
-
-    fun displayField() {
-        field.forEach { row ->
-            row.forEach(::print)
-            println()
-        }
-    }
+    private fun isMine(row: Int, col: Int): Boolean = field[row][col] is Cell.Mined
 }
