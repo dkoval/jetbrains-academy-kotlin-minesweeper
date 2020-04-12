@@ -16,54 +16,80 @@ class Minesweeper(private val numMines: Int = 10) {
         const val NUM_COLS = 9
     }
 
-    private sealed class Cell {
-        class Empty(override var marked: Boolean = false) : Cell(), Markable
-        class Mined(override var marked: Boolean = false) : Cell(), Markable
-        class WithMinesAround(val numMines: Int) : Cell()
-
-        interface Markable {
-            var marked: Boolean
-        }
-
-        companion object {
-            const val EMPTY_CELL_SYMBOL = '.'
-            const val MARKED_CELL_SYMBOL = '*'
-        }
+    enum class Command {
+        FREE, MINE
     }
 
-    fun displayField() {
+    private sealed class Cell(var status: CellStatus = CellStatus.Unexplored()) {
+        class Empty : Cell()
+        class WithMinesAround(val numMines: Int) : Cell()
+        class Mine : Cell()
+
+        companion object {
+            const val UNEXPLORED_CELL_SYMBOL = '.'
+            const val UNEXPLORED_MARKED_CELL_SYMBOL = '*'
+            const val EXPLORED_CELL_SYMBOL = '/'
+            const val MINED_CELL_SYMBOL = 'X'
+        }
+
+        val marked: Boolean get() = status is CellStatus.Unexplored && (status as CellStatus.Unexplored).marked
+
+        fun displaySymbol(showMine: Boolean = false): Char =
+                if (showMine && this is Mine) {
+                    MINED_CELL_SYMBOL
+                } else when (status) {
+                    is CellStatus.Unexplored -> {
+                        val unexplored = status as CellStatus.Unexplored
+                        if (unexplored.marked) UNEXPLORED_MARKED_CELL_SYMBOL else UNEXPLORED_CELL_SYMBOL
+                    }
+                    is CellStatus.Explored -> {
+                        when (this) {
+                            is Empty -> EXPLORED_CELL_SYMBOL
+                            is WithMinesAround -> '0' + numMines
+                            is Mine -> MINED_CELL_SYMBOL
+                        }
+                    }
+                }
+    }
+
+    private sealed class CellStatus {
+        class Unexplored(var marked: Boolean = false) : CellStatus()
+        object Explored : CellStatus()
+    }
+
+    fun displayField(showMines: Boolean = false) {
         println(" │123456789│\n" +
                 "—│—————————│")
         field.forEachIndexed { i, row ->
             print("${i + 1}│")
-            row.forEach { cell ->
-                val marker = when {
-                    cell is Cell.WithMinesAround -> '0' + cell.numMines
-                    cell is Cell.Markable && cell.marked -> Cell.MARKED_CELL_SYMBOL
-                    else -> Cell.EMPTY_CELL_SYMBOL
-                }
-                print(marker)
-            }
+            row.forEach { cell -> print(cell.displaySymbol(showMines)) }
             println("│")
         }
         println("—│—————————│")
     }
 
-    fun markCell(row: Int, col: Int): Boolean {
-        val cellToMark = field[row][col]
-        return if (cellToMark !is Cell.Markable) {
-            false
-        } else {
-            cellToMark.marked = !cellToMark.marked
-            true
-        }
+    fun openCell(row: Int, col: Int, command: Command): Boolean {
+        val cell = field[row][col]
+        return if (cell.status is CellStatus.Unexplored) {
+            when (command) {
+                Command.FREE -> {
+                    cell.status = CellStatus.Explored
+                    cell !is Cell.Mine
+                }
+                Command.MINE -> {
+                    val unexplored = cell.status as CellStatus.Unexplored
+                    unexplored.marked = !unexplored.marked
+                    true
+                }
+            }
+        } else true
     }
 
     fun done(): Boolean {
-        val matches = field.fold(0) { matchesSoFar, row ->
-            matchesSoFar + row.count { cell -> cell is Cell.Mined && cell.marked }
+        val numMinesMarked = field.fold(0) { acc, row ->
+            acc + row.count { cell -> cell is Cell.Mine && cell.marked }
         }
-        return matches == numMines
+        return numMinesMarked == numMines
     }
 
     private fun generateRandomField(numRows: Int, numCols: Int): Array<Array<Cell>> {
@@ -75,7 +101,7 @@ class Minesweeper(private val numMines: Int = 10) {
             val row = randomNum / numRows
             val col = randomNum % numCols
             if (fieldToReturn[row][col] is Cell.Empty) {
-                fieldToReturn[row][col] = Cell.Mined()
+                fieldToReturn[row][col] = Cell.Mine()
                 numMinesSoFar++
             }
         }
@@ -175,5 +201,5 @@ class Minesweeper(private val numMines: Int = 10) {
 
     private fun countMines(vararg cells: Pair<Int, Int>): Int = cells.count { (row, col) -> isMine(row, col) }
 
-    private fun isMine(row: Int, col: Int): Boolean = field[row][col] is Cell.Mined
+    private fun isMine(row: Int, col: Int): Boolean = field[row][col] is Cell.Mine
 }
