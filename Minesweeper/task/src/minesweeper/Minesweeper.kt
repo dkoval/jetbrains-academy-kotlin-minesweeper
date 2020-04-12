@@ -5,11 +5,8 @@ import kotlin.random.Random
 class Minesweeper(private val numMines: Int = 10) {
     private val numRows: Int = NUM_ROWS
     private val numCols: Int = NUM_COLS
-    private var field: Array<Array<Cell>> = generateRandomField(numRows, numCols)
-
-    init {
-        analyseField()
-    }
+    private var board: Array<Array<Cell>> = generateRandomBoard(numRows, numCols)
+    private var firstMove: Boolean = true
 
     companion object {
         const val NUM_ROWS = 9
@@ -20,10 +17,28 @@ class Minesweeper(private val numMines: Int = 10) {
         FREE, MINE
     }
 
-    private sealed class Cell(var status: CellStatus = CellStatus.Unexplored()) {
-        class Empty : Cell()
-        class WithMinesAround(val numMines: Int) : Cell()
+    private sealed class Cell {
+        class Safe(var numMinesAround: Int = -1) : Cell()
         class Mine : Cell()
+
+        var explored: Boolean = false
+            set(value) {
+                if (field && !value) {
+                    throw IllegalStateException("Explored cell cannot be made unexplored")
+                }
+                if (!field && value) {
+                    marked = false
+                    field = value
+                }
+            }
+
+        var marked: Boolean = false
+            set(value) {
+                if (explored) {
+                    throw IllegalStateException("Explored cell cannot be [un]marked")
+                }
+                field = value
+            }
 
         companion object {
             const val UNEXPLORED_CELL_SYMBOL = '.'
@@ -32,93 +47,138 @@ class Minesweeper(private val numMines: Int = 10) {
             const val MINED_CELL_SYMBOL = 'X'
         }
 
-        val marked: Boolean get() = status is CellStatus.Unexplored && (status as CellStatus.Unexplored).marked
-
         fun displaySymbol(showMine: Boolean = false): Char =
                 if (showMine && this is Mine) {
                     MINED_CELL_SYMBOL
-                } else when (status) {
-                    is CellStatus.Unexplored -> {
-                        val unexplored = status as CellStatus.Unexplored
-                        if (unexplored.marked) UNEXPLORED_MARKED_CELL_SYMBOL else UNEXPLORED_CELL_SYMBOL
+                } else if (explored) {
+                    if (this !is Safe) {
+                        throw IllegalStateException("Mined cell cannot be explored")
                     }
-                    is CellStatus.Explored -> {
-                        when (this) {
-                            is Empty -> EXPLORED_CELL_SYMBOL
-                            is WithMinesAround -> '0' + numMines
-                            is Mine -> MINED_CELL_SYMBOL
-                        }
-                    }
+                    if (numMinesAround == 0) EXPLORED_CELL_SYMBOL
+                    else '0' + numMinesAround
+                } else {
+                    if (marked) UNEXPLORED_MARKED_CELL_SYMBOL
+                    else UNEXPLORED_CELL_SYMBOL
                 }
     }
 
-    private sealed class CellStatus {
-        class Unexplored(var marked: Boolean = false) : CellStatus()
-        object Explored : CellStatus()
-    }
-
-    fun displayField(showMines: Boolean = false) {
+    fun showBoard(showMines: Boolean = false) {
         println(" │123456789│\n" +
                 "—│—————————│")
-        field.forEachIndexed { i, row ->
+        board.forEachIndexed { i, row ->
             print("${i + 1}│")
-            row.forEach { cell -> print(cell.displaySymbol(showMines)) }
+            row.forEach { cell -> print(cell.displaySymbol(showMine = showMines)) }
             println("│")
         }
         println("—│—————————│")
     }
 
-    fun openCell(row: Int, col: Int, command: Command): Boolean {
-        val cell = field[row][col]
-        return if (cell.status is CellStatus.Unexplored) {
-            when (command) {
-                Command.FREE -> {
-                    cell.status = CellStatus.Explored
-                    cell !is Cell.Mine
+    fun exploreCell(row: Int, col: Int, command: Command): Boolean {
+        var cell = board[row][col]
+        return if (cell.explored) true else when (command) {
+            Command.FREE -> {
+                cell = ensureFirstMoveIsSafe(row, col)
+                val ok = cell !is Cell.Mine
+                if (ok) {
+                    exploreCellsAround(row, col)
                 }
-                Command.MINE -> {
-                    val unexplored = cell.status as CellStatus.Unexplored
-                    unexplored.marked = !unexplored.marked
-                    true
-                }
+                ok
             }
-        } else true
-    }
-
-    fun done(): Boolean {
-        val numMinesMarked = field.fold(0) { acc, row ->
-            acc + row.count { cell -> cell is Cell.Mine && cell.marked }
-        }
-        return numMinesMarked == numMines
-    }
-
-    private fun generateRandomField(numRows: Int, numCols: Int): Array<Array<Cell>> {
-        val fieldToReturn = init2DArray<Cell>(numRows, numCols) { _, _ -> Cell.Empty() }
-        var numMinesSoFar = 0
-        // randomly put `numMines` to the field
-        while (numMinesSoFar < numMines) {
-            val randomNum = Random.nextInt(0, numRows * numCols)
-            val row = randomNum / numRows
-            val col = randomNum % numCols
-            if (fieldToReturn[row][col] is Cell.Empty) {
-                fieldToReturn[row][col] = Cell.Mine()
-                numMinesSoFar++
+            Command.MINE -> {
+                cell.marked = !cell.marked
+                true
             }
         }
-        return fieldToReturn
     }
 
-    private fun analyseField() {
-        field.forEachIndexed { i, row ->
-            row.forEachIndexed { j, cell ->
-                if (cell is Cell.Empty) {
-                    val numMinesAround = numMinesAround(i, j)
-                    if (numMinesAround in 1..8) {
-                        field[i][j] = Cell.WithMinesAround(numMinesAround)
+    private fun ensureFirstMoveIsSafe(row: Int, col: Int): Cell {
+        if (!firstMove) {
+            return board[row][col]
+        }
+        firstMove = false
+        val cell1 = board[row][col]
+        if (cell1 !is Cell.Mine) {
+            return cell1
+        }
+        // swap mine with the very first safe cell
+        for (i in 0 until numRows) {
+            for (j in 0 until numCols) {
+                val cell2 = board[i][j]
+                if (cell2 !is Cell.Mine) {
+                    board[row][col] = cell2
+                    board[i][j] = cell1
+                    return cell2
+                }
+            }
+        }
+        throw IllegalStateException("No mined cells found on the board")
+    }
+
+    private fun exploreCellsAround(row: Int, col: Int) {
+        val cell = board[row][col]
+        if (cell.explored) {
+            return
+        }
+        if (cell !is Cell.Safe) {
+            return
+        }
+        cell.explored = true
+        cell.numMinesAround = numMinesAround(row, col)
+        if (cell.numMinesAround == 0) {
+            doExploreCellsAround(row - 1, col - 1)
+            doExploreCellsAround(row - 1, col)
+            doExploreCellsAround(row - 1, col + 1)
+            doExploreCellsAround(row, col - 1)
+            doExploreCellsAround(row, col + 1)
+            doExploreCellsAround(row + 1, col - 1)
+            doExploreCellsAround(row + 1, col)
+            doExploreCellsAround(row + 1, col + 1)
+        }
+    }
+
+    private fun doExploreCellsAround(row: Int, col: Int) {
+        if (isWithinBoard(row, col)) {
+            exploreCellsAround(row, col)
+        }
+    }
+
+    fun complete(): Boolean {
+        var numMarkedCells = 0
+        var numMarkedMines = 0
+        var numExploredCells = 0
+        board.forEach { row ->
+            row.forEach { cell ->
+                if (cell.explored) {
+                    numExploredCells++
+                } else {
+                    if (cell.marked) {
+                        numMarkedCells++
+                        if (cell is Cell.Mine) {
+                            numMarkedMines++
+                        }
                     }
                 }
             }
         }
+        // user wins by marking all mines correctly or by exploring all safe cells
+        return numMarkedCells == numMines && numMarkedMines == numMines
+                || numExploredCells == numRows * numCols - numMines
+    }
+
+    private fun generateRandomBoard(numRows: Int, numCols: Int): Array<Array<Cell>> {
+        val boardToReturn = init2DArray<Cell>(numRows, numCols) { _, _ -> Cell.Safe() }
+        var numMinesSoFar = 0
+        // put random numMines on the board
+        while (numMinesSoFar < numMines) {
+            val randomNum = Random.nextInt(0, numRows * numCols)
+            val row = randomNum / numRows
+            val col = randomNum % numCols
+            if (boardToReturn[row][col] is Cell.Safe) {
+                boardToReturn[row][col] = Cell.Mine()
+                numMinesSoFar++
+            }
+        }
+        return boardToReturn
     }
 
     private fun numMinesAround(row: Int, col: Int): Int = when {
@@ -186,7 +246,7 @@ class Minesweeper(private val numMines: Int = 10) {
                     numRows - 1 to col - 1,
                     numRows - 1 to col + 1)
 
-        // cell in the middle of the field
+        // cell is in the middle
         else ->
             countMines(
                     row - 1 to col - 1,
@@ -201,5 +261,7 @@ class Minesweeper(private val numMines: Int = 10) {
 
     private fun countMines(vararg cells: Pair<Int, Int>): Int = cells.count { (row, col) -> isMine(row, col) }
 
-    private fun isMine(row: Int, col: Int): Boolean = field[row][col] is Cell.Mine
+    private fun isWithinBoard(row: Int, col: Int): Boolean = row in 0 until numRows && col in 0 until numRows
+
+    private fun isMine(row: Int, col: Int): Boolean = board[row][col] is Cell.Mine
 }

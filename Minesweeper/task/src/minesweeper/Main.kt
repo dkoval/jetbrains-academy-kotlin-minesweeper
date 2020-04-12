@@ -6,24 +6,25 @@ fun main() {
     Scanner(System.`in`).use { scanner ->
         print("How many mines do you want on the field? ")
         val numMines = scanner.nextInt()
-        val minesweeper = Minesweeper(numMines)
+        val game = Minesweeper(numMines)
 
-        minesweeper.displayField()
-        var steppedOnMine: Boolean
+        println()
+        game.showBoard()
+        var ok: Boolean
         do {
             print("Set/unset mines marks or claim a cell as free: ")
-            println()
             val x = scanner.nextInt()
             val y = scanner.nextInt()
             val cmd = scanner.next()
-            steppedOnMine = minesweeper.openCell(y - 1, x - 1, cmd.toLowerCase().let(::enumValueOf))
-            minesweeper.displayField()
-        } while (!steppedOnMine && !minesweeper.done())
+            ok = game.exploreCell(y - 1, x - 1, cmd.toUpperCase().let(::enumValueOf))
+            println()
+            game.showBoard(showMines = !ok)
+        } while (ok && !game.complete())
 
-        if (steppedOnMine) {
-            println("You stepped on a mine and failed!")
-        } else {
+        if (ok) {
             println("Congratulations! You found all mines!")
+        } else {
+            println("You stepped on a mine and failed!")
         }
     }
 }

@@ -475,6 +475,18 @@ files:
         print("Hello, World!")
     }
   learner_created: false
+- name: src/minesweeper/Arrays2D.kt
+  visible: true
+  text: |-
+    package minesweeper
+
+    inline fun <reified T> init2DArray(numRows: Int, numCols: Int, init: (row: Int, col: Int) -> T): Array<Array<T>> =
+            Array(numRows) { row ->
+                Array(numCols) { col ->
+                    init(row, col)
+                }
+            }
+  learner_created: true
 - name: src/minesweeper/Minesweeper.kt
   visible: true
   text: |-
@@ -658,21 +670,6 @@ files:
         private fun isMine(row: Int, col: Int): Boolean = field[row][col] is Cell.Mined
     }
   learner_created: true
-- name: src/minesweeper/Arrays2D.kt
-  visible: true
-  text: |-
-    package minesweeper
-
-    inline fun <reified T> init2DArray(numRows: Int, numCols: Int, init: (row: Int, col: Int) -> T): Array<Array<T>> =
-            Array(numRows) { row ->
-                Array(numCols) { col ->
-                    init(row, col)
-                }
-            }
-  learner_created: true
-- name: src/minesweeper/Cell.kt
-  visible: true
-  learner_created: true
 feedback_link: https://hyperskill.org/projects/8/stages/469/implement
-status: Unchecked
+status: Failed
 record: -1
