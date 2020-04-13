@@ -9,6 +9,9 @@ class Board(
 ) {
     private val board: Array<Array<Cell>> = init2DArray(numRows, numCols) { _, _ -> Cell.Unexplored }
     private val mines: Array<Array<Boolean>> = generateRandomMines()
+    private var numMarkedCells: Int = 0
+    private var numExploredCells: Int = 0
+    private var numMarkedMines: Int = 0
     private var firstCellExplored: Boolean = false
 
     private fun generateRandomMines(): Array<Array<Boolean>> {
@@ -29,12 +32,12 @@ class Board(
     fun show(showMines: Boolean = false) {
         println(" │123456789│\n" +
                 "—│—————————│")
-        board.forEachIndexed { i, row ->
+        for (i in 0 until numRows) {
             print("${i + 1}│")
-            row.forEachIndexed { j, cell ->
+            for (j in 0 until numCols) {
                 val displaySymbol =
                         if (showMines && mines[i][j]) Cell.MINED_CELL_SYMBOL
-                        else cell.displaySymbol
+                        else board[i][j].displaySymbol
                 print(displaySymbol)
             }
             println("│")
@@ -44,8 +47,20 @@ class Board(
 
     fun mark(row: Int, col: Int) {
         when (board[row][col]) {
-            is Cell.Unexplored -> board[row][col] = Cell.Marked
-            is Cell.Marked -> board[row][col] = Cell.Unexplored
+            is Cell.Unexplored -> {
+                board[row][col] = Cell.Marked
+                numMarkedCells++
+                if (mines[row][col]) {
+                    numMarkedMines++
+                }
+            }
+            is Cell.Marked -> {
+                board[row][col] = Cell.Unexplored
+                numMarkedCells--
+                if (mines[row][col]) {
+                    numMarkedMines--
+                }
+            }
             is Cell.Explored -> throw IllegalStateException("Explored cell cannot be [un]marked anymore")
         }
     }
@@ -57,11 +72,12 @@ class Board(
         if (mines[row][col]) {
             return false
         }
-        if (isExplored(row, col)) {
+        if (board[row][col] is Cell.Explored) {
             return true
         }
         val numMinesAround = numMinesAround(row, col)
         board[row][col] = Cell.Explored(numMinesAround)
+        numExploredCells++
         if (numMinesAround == 0) {
             // explore all the cells around (row, col)
             doExplore(row - 1, col - 1)
@@ -120,23 +136,6 @@ class Board(
     }
 
     fun isSolved(): Boolean {
-        var numMarkedCells = 0
-        var numMarkedMines = 0
-        var numExploredCells = 0
-        board.forEachIndexed { i, row ->
-            row.forEachIndexed { j, cell ->
-                if (cell is Cell.Explored) {
-                    numExploredCells++
-                } else {
-                    if (cell is Cell.Marked) {
-                        numMarkedCells++
-                        if (mines[i][j]) {
-                            numMarkedMines++
-                        }
-                    }
-                }
-            }
-        }
         // user wins by marking all mines correctly or by exploring all safe cells
         return numMarkedCells == numMines && numMarkedMines == numMines
                 || numExploredCells == numRows * numCols - numMines
