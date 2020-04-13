@@ -16,7 +16,7 @@ fun main() {
             val x = scanner.nextInt()
             val y = scanner.nextInt()
             val cmd = scanner.next()
-            ok = game.exploreCell(y - 1, x - 1, cmd.toUpperCase().let(::enumValueOf))
+            ok = game.makeMove(y - 1, x - 1, cmd.toUpperCase().let(::enumValueOf))
             println()
             game.showBoard(showMines = !ok)
         } while (ok && !game.complete())

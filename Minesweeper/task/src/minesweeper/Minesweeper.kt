@@ -73,14 +73,14 @@ class Minesweeper(private val numMines: Int = 10) {
         println("—│—————————│")
     }
 
-    fun exploreCell(row: Int, col: Int, command: Command): Boolean {
+    fun makeMove(row: Int, col: Int, command: Command): Boolean {
         var cell = board[row][col]
         return if (cell.explored) true else when (command) {
             Command.FREE -> {
                 cell = ensureFirstExploredCellIsNotMine(row, col)
                 val ok = cell !is Cell.Mine
                 if (ok) {
-                    exploreCellsAround(row, col)
+                    exploreCell(row, col)
                 }
                 ok
             }
@@ -118,7 +118,7 @@ class Minesweeper(private val numMines: Int = 10) {
         throw IllegalStateException("No mined cells found on the board")
     }
 
-    private fun exploreCellsAround(row: Int, col: Int) {
+    private fun exploreCell(row: Int, col: Int) {
         val cell = board[row][col]
         if (cell.explored) {
             return
@@ -129,20 +129,21 @@ class Minesweeper(private val numMines: Int = 10) {
         cell.explored = true
         cell.numMinesAround = numMinesAround(row, col)
         if (cell.numMinesAround == 0) {
-            doExploreCellsAround(row - 1, col - 1)
-            doExploreCellsAround(row - 1, col)
-            doExploreCellsAround(row - 1, col + 1)
-            doExploreCellsAround(row, col - 1)
-            doExploreCellsAround(row, col + 1)
-            doExploreCellsAround(row + 1, col - 1)
-            doExploreCellsAround(row + 1, col)
-            doExploreCellsAround(row + 1, col + 1)
+            // explore all the cells around (row, col)
+            doExploreCell(row - 1, col - 1)
+            doExploreCell(row - 1, col)
+            doExploreCell(row - 1, col + 1)
+            doExploreCell(row, col - 1)
+            doExploreCell(row, col + 1)
+            doExploreCell(row + 1, col - 1)
+            doExploreCell(row + 1, col)
+            doExploreCell(row + 1, col + 1)
         }
     }
 
-    private fun doExploreCellsAround(row: Int, col: Int) {
+    private fun doExploreCell(row: Int, col: Int) {
         if (isCellOnBoard(row, col)) {
-            exploreCellsAround(row, col)
+            exploreCell(row, col)
         }
     }
 
