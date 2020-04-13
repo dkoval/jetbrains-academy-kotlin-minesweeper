@@ -6,7 +6,7 @@ class Minesweeper(private val numMines: Int = 10) {
     private val numRows: Int = NUM_ROWS
     private val numCols: Int = NUM_COLS
     private var board: Array<Array<Cell>> = generateRandomBoard(numRows, numCols)
-    private var firstMove: Boolean = true
+    private var firstCellExplored: Boolean = false
 
     companion object {
         const val NUM_ROWS = 9
@@ -54,8 +54,8 @@ class Minesweeper(private val numMines: Int = 10) {
                     if (this !is Safe) {
                         throw IllegalStateException("Mined cell cannot be explored")
                     }
-                    if (numMinesAround == 0) EXPLORED_CELL_SYMBOL
-                    else '0' + numMinesAround
+                    if (numMinesAround > 0) '0' + numMinesAround
+                    else EXPLORED_CELL_SYMBOL
                 } else {
                     if (marked) UNEXPLORED_MARKED_CELL_SYMBOL
                     else UNEXPLORED_CELL_SYMBOL
@@ -77,7 +77,7 @@ class Minesweeper(private val numMines: Int = 10) {
         var cell = board[row][col]
         return if (cell.explored) true else when (command) {
             Command.FREE -> {
-                cell = ensureFirstMoveIsSafe(row, col)
+                cell = ensureFirstExploredCellIsNotMine(row, col)
                 val ok = cell !is Cell.Mine
                 if (ok) {
                     exploreCellsAround(row, col)
@@ -91,11 +91,11 @@ class Minesweeper(private val numMines: Int = 10) {
         }
     }
 
-    private fun ensureFirstMoveIsSafe(row: Int, col: Int): Cell {
-        if (!firstMove) {
+    private fun ensureFirstExploredCellIsNotMine(row: Int, col: Int): Cell {
+        if (firstCellExplored) {
             return board[row][col]
         }
-        firstMove = false
+        firstCellExplored = true
         val cell1 = board[row][col]
         if (cell1 !is Cell.Mine) {
             return cell1
@@ -105,6 +105,10 @@ class Minesweeper(private val numMines: Int = 10) {
             for (j in 0 until numCols) {
                 val cell2 = board[i][j]
                 if (cell2 !is Cell.Mine) {
+                    if (cell1.marked) {
+                        cell1.marked = false
+                        cell2.marked = true
+                    }
                     board[row][col] = cell2
                     board[i][j] = cell1
                     return cell2
