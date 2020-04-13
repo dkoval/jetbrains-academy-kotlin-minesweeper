@@ -141,7 +141,7 @@ class Minesweeper(private val numMines: Int = 10) {
     }
 
     private fun doExploreCellsAround(row: Int, col: Int) {
-        if (isWithinBoard(row, col)) {
+        if (isCellOnBoard(row, col)) {
             exploreCellsAround(row, col)
         }
     }
@@ -185,73 +185,7 @@ class Minesweeper(private val numMines: Int = 10) {
         return boardToReturn
     }
 
-    private fun numMinesAround(row: Int, col: Int): Int = when {
-        // cell is in top-level corner
-        row == 0 && col == 0 ->
-            countMines(
-                    0 to 1,
-                    1 to 0,
-                    1 to 1)
-
-        // cell is in top-right corner
-        row == 0 && col == numCols - 1 ->
-            countMines(
-                    0 to numCols - 2,
-                    1 to numCols - 2,
-                    1 to numCols - 1)
-
-        // cell is in bottom-left corner
-        row == numRows - 1 && col == 0 ->
-            countMines(
-                    numRows - 2 to 0,
-                    numRows - 2 to 1,
-                    numRows - 1 to 1)
-
-        // cell is in bottom-right corner
-        row == numRows - 1 && col == numCols - 1 ->
-            countMines(
-                    numRows - 2 to numCols - 2,
-                    numRows - 2 to numCols - 1,
-                    numRows - 1 to numCols - 2)
-
-        // cell is on the top side
-        row == 0 ->
-            countMines(
-                    0 to col - 1,
-                    0 to col + 1,
-                    1 to col - 1,
-                    1 to col,
-                    1 to col + 1)
-
-        // cell is on the left side
-        col == 0 ->
-            countMines(
-                    row - 1 to 0,
-                    row - 1 to 1,
-                    row to 1,
-                    row + 1 to 0,
-                    row + 1 to 1)
-
-        // cell is on the right side
-        col == numCols - 1 ->
-            countMines(
-                    row - 1 to numCols - 2,
-                    row - 1 to numCols - 1,
-                    row to numCols - 2,
-                    row + 1 to numCols - 2,
-                    row + 1 to numCols - 1)
-
-        // cell is on the bottom side
-        row == numRows - 1 ->
-            countMines(
-                    numRows - 2 to col - 1,
-                    numRows - 2 to col,
-                    numRows - 2 to col + 1,
-                    numRows - 1 to col - 1,
-                    numRows - 1 to col + 1)
-
-        // cell is in the middle
-        else ->
+    private fun numMinesAround(row: Int, col: Int): Int =
             countMines(
                     row - 1 to col - 1,
                     row - 1 to col,
@@ -261,11 +195,13 @@ class Minesweeper(private val numMines: Int = 10) {
                     row + 1 to col - 1,
                     row + 1 to col,
                     row + 1 to col + 1)
-    }
 
-    private fun countMines(vararg cells: Pair<Int, Int>): Int = cells.count { (row, col) -> isMine(row, col) }
+    private fun isCellOnBoard(row: Int, col: Int): Boolean =
+            row in 0 until numRows && col in 0 until numRows
 
-    private fun isWithinBoard(row: Int, col: Int): Boolean = row in 0 until numRows && col in 0 until numRows
+    private fun countMines(vararg cells: Pair<Int, Int>): Int =
+            cells.count { (row, col) -> isCellOnBoard(row, col) && isMine(row, col) }
 
-    private fun isMine(row: Int, col: Int): Boolean = board[row][col] is Cell.Mine
+    private fun isMine(row: Int, col: Int): Boolean =
+            board[row][col] is Cell.Mine
 }
