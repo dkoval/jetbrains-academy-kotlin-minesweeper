@@ -72,8 +72,16 @@ class Board(
         if (mines[row][col]) {
             return false
         }
+        doExplore(row, col)
+        return true
+    }
+
+    private fun doExplore(row: Int, col: Int) {
+        if (!isWithinBoundaries(row, col)) {
+            return
+        }
         if (board[row][col] is Cell.Explored) {
-            return true
+            return
         }
         val numMinesAround = numMinesAround(row, col)
         board[row][col] = Cell.Explored(numMinesAround)
@@ -88,13 +96,6 @@ class Board(
             doExplore(row + 1, col - 1)
             doExplore(row + 1, col)
             doExplore(row + 1, col + 1)
-        }
-        return true
-    }
-
-    private fun doExplore(row: Int, col: Int) {
-        if (isWithinBoundaries(row, col)) {
-            explore(row, col)
         }
     }
 
