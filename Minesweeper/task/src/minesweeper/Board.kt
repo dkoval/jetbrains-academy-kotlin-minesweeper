@@ -10,8 +10,8 @@ class Board(
     private val board: Array<Array<Cell>> = init2DArray(numRows, numCols) { _, _ -> Cell.Unexplored }
     private val mines: Array<Array<Boolean>> = generateRandomMines()
     private var numMarkedCells: Int = 0
-    private var numExploredCells: Int = 0
     private var numMarkedMines: Int = 0
+    private var numExploredCells: Int = 0
     private var firstCellExplored: Boolean = false
 
     private fun generateRandomMines(): Array<Array<Boolean>> {
@@ -69,11 +69,12 @@ class Board(
 
     fun explore(row: Int, col: Int): Boolean {
         ensureFirstCellExploredIsNotMine(row, col)
-        if (mines[row][col]) {
-            return false
+        return if (mines[row][col]) {
+            false
+        } else {
+            doExplore(row, col)
+            true
         }
-        doExplore(row, col)
-        return true
     }
 
     private fun doExplore(row: Int, col: Int) {
@@ -136,11 +137,9 @@ class Board(
         }
     }
 
-    fun isSolved(): Boolean {
-        // user wins by marking all mines correctly or by exploring all safe cells
-        return numMarkedCells == numMines && numMarkedMines == numMines
-                || numExploredCells == numRows * numCols - numMines
-    }
+    fun isSolved(): Boolean =
+            // user wins by marking all mines correctly or by exploring all safe cells
+            numMarkedCells == numMines && numMarkedMines == numMines || numExploredCells == numRows * numCols - numMines
 }
 
 sealed class Cell {
